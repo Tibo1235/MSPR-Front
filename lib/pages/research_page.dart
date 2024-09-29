@@ -1,14 +1,11 @@
-//Pour tous les utilisateurs
-//Permet de faire une recherche dans les annonces
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:japx/japx.dart';
 import '/models/annonce.dart';
 import 'package:provider/provider.dart';
 import '/pages/detail_annonce.dart';
 import '/utility/providerUser.dart';
-
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);
@@ -20,45 +17,52 @@ class SearchPage extends StatefulWidget {
 class _SearchState extends State<SearchPage> {
   List<Annonce> searchResults = [];
   String searchTerm = "";
-
+  final Dio dio = Dio();
 
   Future<List<Annonce>> fetchAnnoncesFromApi(user) async {
-    var response;
-    if (searchTerm == "")
-    {
-      response = await http.get(Uri.parse('/annonces/search?termeRecherche=""'),
-          headers: {
-          'Authorization': 'Bearer ${user?.token}'
-          });
-    }
-    else {
-      response = await http.get(Uri.parse(
-          '/annonces/search?termeRecherche=${searchTerm}'),
-          headers: {
-            'Authorization': 'Bearer ${user?.token}'
-          });
-    }
-    if (response.statusCode == 200) {
-      print(json.decode(response.body));
-      final Map<String, dynamic> decodedJson = Japx.decode(json.decode(response.body));
-      final List<dynamic> data = decodedJson['data'];
-      List to_sort = data.map((json) => Annonce.fromJson(json)).toList();
-      List<Annonce>return_list = [];
-      for (var annonce in to_sort) {
-        if (annonce.is_conseil == "true") {
-          return_list.add(annonce);
-        }
+    try {
+      Response response;
+      if (searchTerm == "") {
+        response = await dio.get(
+          '/annonces/search',
+          queryParameters: {'termeRecherche': ""},
+          options: Options(headers: {
+            'Authorization': 'Bearer ${user?.token}',
+          }),
+        );
+      } else {
+        response = await dio.get(
+          '/annonces/search',
+          queryParameters: {'termeRecherche': searchTerm},
+          options: Options(headers: {
+            'Authorization': 'Bearer ${user?.token}',
+          }),
+        );
       }
-      return return_list;
-    } else {
-      throw Exception('Failed to load annonce');
+
+      if (response.statusCode == 200) {
+        print(response.data);
+        final Map<String, dynamic> decodedJson = Japx.decode(response.data);
+        final List<dynamic> data = decodedJson['data'];
+        List to_sort = data.map((json) => Annonce.fromJson(json)).toList();
+        List<Annonce> return_list = [];
+        for (var annonce in to_sort) {
+          if (annonce.is_conseil == "true") {
+            return_list.add(annonce);
+          }
+        }
+        return return_list;
+      } else {
+        throw Exception('Failed to load annonces');
+      }
+    } catch (e) {
+      print('Error fetching annonces: $e');
+      throw Exception('Error fetching annonces');
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-
     final user = Provider.of<UserProvider>(context).user;
     return SingleChildScrollView(
       child: Container(
@@ -113,18 +117,16 @@ class _SearchState extends State<SearchPage> {
                               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 10),
-                            // Affichez les résultats de la recherche avec ListView.builder
                             ListView.builder(
                               shrinkWrap: true,
                               itemCount: searchResults.length,
                               itemBuilder: (context, index) {
                                 return InkWell(
                                   onTap: () {
-                                    //Naviguer vers la page de détails de l'article
                                     Navigator.push(
                                       context,
-                                    MaterialPageRoute(
-                                      builder: (context) => ViewAnnonce(annonce: searchResults[index]),
+                                      MaterialPageRoute(
+                                        builder: (context) => ViewAnnonce(annonce: searchResults[index]),
                                       ),
                                     );
                                   },

@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import '/utility/providerUser.dart';
 import '/pages/accueil.dart';
 
-
 import 'account_creation.dart';
 
 class LoginPage extends StatefulWidget {
@@ -58,10 +57,11 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void accessAsGuest(BuildContext context) {
-    // Redirige directement vers la page d'accueil sans authentification
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePage()));
-  }
+  // Supprimer la méthode accessAsGuest
+  // void accessAsGuest(BuildContext context) {
+  //   // Redirige directement vers la page d'accueil sans authentification
+  //   Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePage()));
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -100,9 +100,8 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 5),
               _signUpBtn(context),
-              const SizedBox(height: 20),
-              _guestAccessBtn(context),  // Bouton pour accès en tant qu'invité
-              const SizedBox(height: 20),
+              // Supprimer les espacements liés au bouton "Accès Invité"
+              // const SizedBox(height: 20),
               _extraText(),
             ],
           ),
@@ -170,17 +169,18 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _guestAccessBtn(BuildContext context) {
-    return TextButton(
-      onPressed: () {
-        accessAsGuest(context);
-      },
-      child: Text(
-        "Accès Invité",
-        style: TextStyle(fontSize: 20, color: Color(0xFF354733)), // Couleur du texte
-      ),
-    );
-  }
+  // Supprimer le bouton "Accès Invité"
+  // Widget _guestAccessBtn(BuildContext context) {
+  //   return TextButton(
+  //     onPressed: () {
+  //       accessAsGuest(context);
+  //     },
+  //     child: Text(
+  //       "Accès Invité",
+  //       style: TextStyle(fontSize: 20, color: Color(0xFF354733)), // Couleur du texte
+  //     ),
+  //   );
+  // }
 
   Widget _extraText() {
     return const Text(

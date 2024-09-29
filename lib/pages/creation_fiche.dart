@@ -5,9 +5,9 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
-import '/models/fiche.dart'; // Importation du modèle Fiche
-import '/models/user.dart'; // Importation du modèle User
-import '../utility/providerUser.dart'; // Importation du package image
+import '/models/fiche.dart';
+import '/models/user.dart'; 
+import '../utility/providerUser.dart';
 
 class CreateFichePage extends StatefulWidget {
   @override
@@ -19,7 +19,6 @@ class _CreateFichePageState extends State<CreateFichePage> {
   List<File> images = [];
   TextEditingController especesController = TextEditingController();
   TextEditingController contenuController = TextEditingController();
-
 
   Future<void> _pickPhoto(ImageSource source) async {
     final pickedFile = await ImagePicker().pickImage(source: source);
@@ -34,13 +33,13 @@ class _CreateFichePageState extends State<CreateFichePage> {
     try {
       Dio dio = Dio();
 
-
       // URL de l'API pour créer une fiche
-      const String url = '/fiches';
+      const String url = 'http://10.2.0.0:3000/fiches'; // Update to your actual API endpoint
 
       FormData formData = FormData.fromMap({
         'especes': especesController.text,
         'contenu': contenuController.text,
+        'usersId': user?.userId, // Use userId here
         'photos': await MultipartFile.fromFile(photo!.path, filename: 'photo.jpg'),
       });
 
@@ -67,7 +66,6 @@ class _CreateFichePageState extends State<CreateFichePage> {
   }
 
   Future<void> getImage(ImageSource source) async {
-
     final imageTemporary = await ImagePicker().pickImage(source: source);
     if (imageTemporary != null) {
       setState(() {
@@ -83,7 +81,6 @@ class _CreateFichePageState extends State<CreateFichePage> {
   }
 
   Widget buildGridView() {
-
     return images.isEmpty
         ? SizedBox.shrink()
         : GridView.count(
@@ -119,10 +116,8 @@ class _CreateFichePageState extends State<CreateFichePage> {
   }
 
   Future<void> submitForm(User? user) async {
-
     try {
       if (especesController.text.isNotEmpty &&
-
           contenuController.text.isNotEmpty) {
         createFiche(user);
       } else {
