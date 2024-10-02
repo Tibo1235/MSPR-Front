@@ -1,49 +1,60 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '/models/user.dart';
-import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 
 class Auth {
+  static const String loginUrl = 'http://10.0.2.2:3000/users/auth';
+  static final Dio dio = Dio(); // Initialiser Dio
 
   static Future<User?> authenticate(String email, String password) async {
     try {
-      var response = await http.post(
-
-          Uri.parse('/users/auth'),
-          headers: <String, String>{
+      var response = await dio.post(
+        loginUrl,
+        data: jsonEncode(<String, String>{
+          'email': email,
+          'password': password,
+        }),
+        options: Options(
+          headers: {
             'Content-Type': 'application/json; charset=UTF-8',
           },
-          body: jsonEncode(<String, String> {
-            'email': email,
-            'password': password
-          })
+        ),
       );
 
       if (response.statusCode == 200) {
-        var data = jsonDecode(response.body);
+        var data = response.data;
         String token = data['token'];
-        JWT jwt;
-        jwt = JWT.decode(token);
-        User user = User.fromJson(jwt.payload);
+        Map<String, dynamic> userData = data['user'];
+        User user = User.fromJson(userData);
         user.token = token;
-        if (data != null && data.containsKey('token')) {
-          return user;
-        }
+
+        // Stocker le token en utilisant SharedPreferences
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('jwt_token', token);
+
+        return user;
+      } else {
+        print('Login failed with status: ${response.statusCode}');
+        return null;
       }
-    }
-    on SocketException catch (e) {
-      print('Network error: $e');
+    } on DioError catch (e) {
+      if (e.error is SocketException) {
+        print('Network error: $e');
+      } else {
+        print('Dio error: ${e.message}');
+      }
       return null;
-    }
-    on http.ClientException catch (e) {
-      print('HTTP error: $e');
-      return null;
-    }
-    catch (e) {
+    } catch (e) {
       print('Unexpected error: $e');
       return null;
     }
-    return null;
+  }
+
+
+  static Future<String?> getToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('jwt_token'); // Récupérer le token stock
   }
 }
