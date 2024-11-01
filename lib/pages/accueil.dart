@@ -65,11 +65,6 @@ class _HomePageState extends State<HomePage> {
             label: 'Fiche',
               backgroundColor: Colors.green
           ),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.add_comment_rounded),
-              label: 'Messagerie',
-              backgroundColor: Colors.green
-          ),
           if (isAdmin || isBotaniste)
             BottomNavigationBarItem(
                 icon: Icon(Icons.add),

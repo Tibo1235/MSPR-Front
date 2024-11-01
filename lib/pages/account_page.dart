@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:japx/japx.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 import '/models/user.dart';
 import '/utility/providerUser.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 
 class AccountPage extends StatefulWidget {
   const AccountPage({Key? key}) : super(key: key);
@@ -26,17 +26,27 @@ class _AccountPageState extends State<AccountPage> {
   TextEditingController codePostalController = TextEditingController();
 
   Future<UserInfo> userInfos(user) async {
-    final response = await http.get(
-      Uri.parse('/users/infos'),
-      headers: {
-        'Authorization': 'Bearer ${user?.token}'
-      },
-    );
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> decodedJson = json.decode(response.body);
-      final data = decodedJson['data']['attributes'];
-      return UserInfo.fromJson(data);
-    } else {
+    Dio dio = Dio();
+
+    try {
+      final response = await dio.get(
+        '/users/infos',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer ${user?.token}',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> decodedJson = json.decode(response.data);
+        final data = decodedJson['data']['attributes'];
+        return UserInfo.fromJson(data);
+      } else {
+        throw Exception('Failed to load User infos');
+      }
+    } catch (e) {
+      print('Error: $e');
       throw Exception('Failed to load User infos');
     }
   }

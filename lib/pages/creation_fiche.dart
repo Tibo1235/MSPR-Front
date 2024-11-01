@@ -7,7 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import '/models/fiche.dart'; // Importation du modèle Fiche
 import '/models/user.dart'; // Importation du modèle User
-import '../utility/providerUser.dart'; // Importation du package image
+import '../utility/providerUser.dart'; // Importation du providerUser
 
 class CreateFichePage extends StatefulWidget {
   @override
@@ -15,63 +15,104 @@ class CreateFichePage extends StatefulWidget {
 }
 
 class _CreateFichePageState extends State<CreateFichePage> {
-  File? photo;
+  // Liste pour stocker plusieurs images
   List<File> images = [];
   TextEditingController especesController = TextEditingController();
   TextEditingController contenuController = TextEditingController();
+  bool _isLoading = false;
+  String? _errorMessage;
 
+  // Configuration de Dio avec une URL de base
+  late Dio dio;
 
-  Future<void> _pickPhoto(ImageSource source) async {
-    final pickedFile = await ImagePicker().pickImage(source: source);
-    if (pickedFile != null) {
-      setState(() {
-        photo = File(pickedFile.path);
-      });
+  @override
+  void initState() {
+    super.initState();
+    dio = Dio(
+      BaseOptions(
+        baseUrl: 'http://10.2.0.0:3000', // Remplacez par l'URL de votre backend
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    especesController.dispose();
+    contenuController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImages(ImageSource source) async {
+    try {
+      final pickedFiles = await ImagePicker().pickMultiImage();
+      if (pickedFiles != null && pickedFiles.isNotEmpty) {
+        setState(() {
+          images.addAll(pickedFiles.map((pickedFile) => File(pickedFile.path)));
+        });
+      }
+    } catch (e) {
+      print('Erreur lors de la sélection des images: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la sélection des images')),
+      );
     }
   }
 
   Future<void> createFiche(User? user) async {
+    if (images.isEmpty) {
+      setState(() {
+        _errorMessage = 'Veuillez sélectionner au moins une image.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
-      Dio dio = Dio();
-
-
-      // URL de l'API pour créer une fiche
-      const String url = '/fiches';
+      // Préparer les fichiers d'images
+      List<MultipartFile> multipartImages = [];
+      for (var image in images) {
+        multipartImages.add(await MultipartFile.fromFile(image.path, filename: image.path.split('/').last));
+      }
 
       FormData formData = FormData.fromMap({
         'especes': especesController.text,
         'contenu': contenuController.text,
-        'photos': await MultipartFile.fromFile(photo!.path, filename: 'photo.jpg'),
+        'photos': multipartImages, // Liste de MultipartFile
       });
 
+      // Ajouter le header d'autorisation
       dio.options.headers['Authorization'] = 'Bearer ${user?.token}';
 
-      print('Envoi de la requête avec les données :');
-      print('Espèces : ${especesController.text}');
-      print('Contenu : ${contenuController.text}');
-      print('Photo : ${photo!.path}');
-      // Envoi de la requête HTTP POST avec le corps JSON de la fiche
-      final response = await dio.post(url, data: formData);
+      // Envoyer la requête POST
+      final response = await dio.post('/fiches', data: formData);
 
-      // Vérifier le statut de la réponse
       if (response.statusCode == 201) {
         // Fiche créée avec succès
-        // Afficher un message ou effectuer une action
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fiche créée avec succès')),
+        );
+        // Optionnel: Naviguer vers une autre page ou réinitialiser le formulaire
+        Navigator.pop(context); // Par exemple, revenir à la page précédente
       } else {
-        throw Exception('Failed to create fiche');
+        setState(() {
+          _errorMessage = 'Erreur lors de la création de la fiche: ${response.statusMessage}';
+        });
       }
     } catch (error) {
-      print('Erreur lors de la création de la fiche: $error');
-      // Gérer l'erreur comme nécessaire
-    }
-  }
-
-  Future<void> getImage(ImageSource source) async {
-
-    final imageTemporary = await ImagePicker().pickImage(source: source);
-    if (imageTemporary != null) {
       setState(() {
-        photo = File(imageTemporary.path);
+        _errorMessage = 'Erreur lors de la création de la fiche: $error';
+      });
+      print('Erreur lors de la création de la fiche: $error');
+    } finally {
+      setState(() {
+        _isLoading = false;
       });
     }
   }
@@ -83,79 +124,91 @@ class _CreateFichePageState extends State<CreateFichePage> {
   }
 
   Widget buildGridView() {
-
     return images.isEmpty
         ? SizedBox.shrink()
-        : GridView.count(
-      crossAxisCount: 3,
+        : GridView.builder(
+      itemCount: images.length,
       shrinkWrap: true,
       physics: NeverScrollableScrollPhysics(),
-      children: List.generate(images.length, (index) {
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+      ),
+      itemBuilder: (context, index) {
         File image = images[index];
-        Uint8List imageBytes = image.readAsBytesSync();
         return Stack(
           children: [
             Container(
-              margin: EdgeInsets.all(8.0),
-              child: Image.memory(
-                Uint8List.fromList(imageBytes),
-                height: 100,
-                width: 100,
-                fit: BoxFit.cover,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                image: DecorationImage(
+                  image: FileImage(image),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             Positioned(
               top: 0,
               right: 0,
-              child: IconButton(
-                icon: Icon(Icons.close),
-                onPressed: () => removeImage(index),
+              child: GestureDetector(
+                onTap: () => removeImage(index),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
               ),
             ),
           ],
         );
-      }),
+      },
     );
   }
 
   Future<void> submitForm(User? user) async {
-
-    try {
-      if (especesController.text.isNotEmpty &&
-
-          contenuController.text.isNotEmpty) {
-        createFiche(user);
-      } else {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text("Champs incomplets"),
-              content: Text("Veuillez remplir tous les champs avant de soumettre."),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFBD6578), // Couleur de fond
-                  ),
-                  child: Text('OK'),
+    if (especesController.text.isEmpty || contenuController.text.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("Champs incomplets"),
+            content: Text("Veuillez remplir tous les champs avant de soumettre."),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFBD6578), // Couleur de fond
                 ),
-              ],
-            );
-          },
-        );
-      }
-    } catch (error) {
-      print('Erreur lors de la création de la fiche: $error');
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
     }
+
+    await createFiche(user);
   }
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
     return Scaffold(
       backgroundColor: Color(0xFFF8E9DE),
+      appBar: AppBar(
+        title: Text("Créer une Fiche"),
+        backgroundColor: Color(0xFF8A9B6E),
+      ),
       body: Center(
         child: SingleChildScrollView(
           child: Container(
@@ -178,9 +231,10 @@ class _CreateFichePageState extends State<CreateFichePage> {
                   ),
                 ),
                 SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => getImage(ImageSource.camera),
-                  child: Text('Sélectionner une image'),
+                ElevatedButton.icon(
+                  onPressed: () => _pickImages(ImageSource.gallery),
+                  icon: Icon(Icons.photo_library),
+                  label: Text('Sélectionner des images'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF8A9B6E),
                   ),
@@ -188,29 +242,50 @@ class _CreateFichePageState extends State<CreateFichePage> {
                 SizedBox(height: 20),
                 buildGridView(),
                 SizedBox(height: 20),
-                TextField(
+                _buildTextField(
                   controller: especesController,
-                  decoration: InputDecoration(labelText: 'Espèce'),
+                  label: 'Espèce',
                 ),
                 SizedBox(height: 20),
-                TextField(
+                _buildTextField(
                   controller: contenuController,
-                  decoration: InputDecoration(labelText: 'Description'),
+                  label: 'Description',
+                  maxLines: 5,
                 ),
                 SizedBox(height: 20),
-                ElevatedButton(
+                _isLoading
+                    ? CircularProgressIndicator()
+                    : ElevatedButton(
                   onPressed: () {
-                    var user = Provider.of<UserProvider>(context, listen: false).user;
+                    var user = userProvider.user;
                     if (user != null) {
                       submitForm(user);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Utilisateur non authentifié')),
+                      );
                     }
                   },
                   child: Text('Créer la fiche'),
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: Color(0xFF8A9B6E),
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    textStyle: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
+                SizedBox(height: 20.0),
+                if (_errorMessage != null)
+                  Text(
+                    _errorMessage!,
+                    style: TextStyle(color: Colors.red),
+                  ),
               ],
             ),
           ),
@@ -218,4 +293,43 @@ class _CreateFichePageState extends State<CreateFichePage> {
       ),
     );
   }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    bool obscureText = false,
+    int maxLines = 1,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xA08A9B6E),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10.0),
+        child: TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          decoration: InputDecoration(
+            labelText: label,
+            border: InputBorder.none,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => UserProvider(),
+      child: MaterialApp(
+        home: CreateFichePage(),
+      ),
+    ),
+  );
 }
