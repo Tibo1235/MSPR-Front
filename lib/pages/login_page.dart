@@ -1,13 +1,10 @@
-//Page pour tous les utilisateurs
-//Permet de se connecter à l'application
+// pages/login_page.dart
 import 'package:flutter/material.dart';
 import '/models/user.dart';
 import '../utility/auth.dart';
 import 'package:provider/provider.dart';
 import '/utility/providerUser.dart';
 import '/pages/accueil.dart';
-
-
 import 'account_creation.dart';
 
 class LoginPage extends StatefulWidget {
@@ -16,51 +13,60 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  TextEditingController _usernameController = TextEditingController();
+  TextEditingController _emailController = TextEditingController();
   TextEditingController _passwordController = TextEditingController();
   bool isButtonVisible = false;
+  bool _isLoading = false; // Indicateur de chargement
+  String? _errorMessage; // Message d'erreur éventuel
 
   @override
   void dispose() {
     super.dispose();
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    _usernameController.addListener(updateButtonVisibility);
+    _emailController.addListener(updateButtonVisibility);
     _passwordController.addListener(updateButtonVisibility);
   }
 
   void updateButtonVisibility() {
     setState(() {
-      isButtonVisible = _usernameController.text.isNotEmpty && _passwordController.text.isNotEmpty;
+      isButtonVisible = _emailController.text.isNotEmpty && _passwordController.text.isNotEmpty;
     });
   }
 
   Future<void> login(BuildContext context) async {
-    String username = _usernameController.text;
+    String email = _emailController.text;
     String password = _passwordController.text;
 
-    final user = await Auth.authenticate(username, password);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final user = await Auth.authenticate(email, password);
 
     if (user != null) {
       Provider.of<UserProvider>(context, listen: false).setUser(user);
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePage()));
     } else {
+      setState(() {
+        _errorMessage = 'Identifiants incorrects. Veuillez réessayer.';
+      });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
           'Identifiants incorrects. Veuillez réessayer.',
         ),
       ));
     }
-  }
 
-  void accessAsGuest(BuildContext context) {
-    // Redirige directement vers la page d'accueil sans authentification
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePage()));
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
@@ -86,11 +92,21 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               _icon(),
               const SizedBox(height: 50),
-              _inputField("Email", _usernameController),
+              _inputField("Email", _emailController, keyboardType: TextInputType.emailAddress),
               const SizedBox(height: 20),
               _inputField("Mot de passe", _passwordController, isPassword: true),
               const SizedBox(height: 50),
-              _loginBtn(context),
+              _isLoading
+                  ? CircularProgressIndicator()
+                  : _loginBtn(context),
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10.0),
+                  child: Text(
+                    _errorMessage!,
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
               const SizedBox(height: 10),
               Divider(
                 color: Color(0xFF354733),
@@ -100,9 +116,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 5),
               _signUpBtn(context),
-              const SizedBox(height: 20),
-              _guestAccessBtn(context),  // Bouton pour accès en tant qu'invité
-              const SizedBox(height: 20),
               _extraText(),
             ],
           ),
@@ -121,7 +134,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _inputField(String hintText, TextEditingController controller, {isPassword = false}) {
+  Widget _inputField(String hintText, TextEditingController controller, {bool isPassword = false, TextInputType? keyboardType}) {
     var border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(18),
       borderSide: const BorderSide(color: Color(0xFF8A9B6E)),
@@ -129,13 +142,14 @@ class _LoginPageState extends State<LoginPage> {
     return TextField(
       style: const TextStyle(color: Color(0xFF354733)),
       controller: controller,
+      keyboardType: keyboardType ?? TextInputType.text,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: const TextStyle(color: Color(0xFF354733)),
         enabledBorder: border,
         focusedBorder: border,
         filled: true,
-        fillColor: Color(0xA08A9B6E),
+        fillColor: const Color(0xA08A9B6E),
       ),
       obscureText: isPassword,
     );
@@ -143,13 +157,20 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _loginBtn(BuildContext context) {
     return isButtonVisible
-        ? TextButton(
+        ? ElevatedButton(
       onPressed: () async {
         await login(context);
       },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Color(0xFF354733),
+        padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
       child: Text(
         "Se connecter",
-        style: TextStyle(fontSize: 20, color: Color(0xFF354733)),
+        style: TextStyle(fontSize: 20, color: Colors.white),
       ),
     )
         : SizedBox();
@@ -166,18 +187,6 @@ class _LoginPageState extends State<LoginPage> {
       child: Text(
         "S'inscrire",
         style: TextStyle(fontSize: 20, color: Color(0xFF354733)),
-      ),
-    );
-  }
-
-  Widget _guestAccessBtn(BuildContext context) {
-    return TextButton(
-      onPressed: () {
-        accessAsGuest(context);
-      },
-      child: Text(
-        "Accès Invité",
-        style: TextStyle(fontSize: 20, color: Color(0xFF354733)), // Couleur du texte
       ),
     );
   }

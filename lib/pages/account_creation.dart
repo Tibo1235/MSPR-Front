@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../utility/providerUser.dart';
 import 'login_page.dart';
 import 'package:dio/dio.dart';
-import '/utility/providerUser.dart';
 
 class UserRegistrationPage extends StatefulWidget {
   @override
@@ -18,6 +17,18 @@ class _UserRegistrationPageState extends State<UserRegistrationPage> {
   TextEditingController passwordController = TextEditingController();
   bool _acceptedPolicy = false;
   bool _isButtonEnabled = false;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    pseudoController.addListener(_checkFields);
+    emailController.addListener(_checkFields);
+    cityController.addListener(_checkFields);
+    postalCodeController.addListener(_checkFields);
+    passwordController.addListener(_checkFields);
+  }
 
   void _checkFields() {
     bool isFieldsFilled = pseudoController.text.isNotEmpty &&
@@ -30,41 +41,78 @@ class _UserRegistrationPageState extends State<UserRegistrationPage> {
     });
   }
 
-  Future<void> createAccount(UserProvider userProvider) async {
+  Future<void> createAccount() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
       Dio dio = Dio();
 
-      const String url = '/users';
+      // Remplacez par 10.0.2.2 pour un émulateur Android
+      const String url = 'http://10.0.2.2:3000/users/user';
 
-      FormData formData = FormData.fromMap({
+      // Conversion du code postal en entier
+      int codePostal = int.tryParse(postalCodeController.text) ?? 0;
+
+      // Préparation des données
+      Map<String, dynamic> data = {
         'email': emailController.text,
         'password': passwordController.text,
         'pseudo': pseudoController.text,
         'ville': cityController.text,
-        'codePostal': postalCodeController.text,
+        'codePostal': codePostal,
+      };
 
+      // Envoi de la requête POST
+      final response = await dio.post(
+        url,
+        data: data,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
 
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        // Compte créé avec succès, naviguer vers la page de connexion
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => LoginPage()),
+        );
+      } else {
+        // Gérer les autres statuts de réponse
+        setState(() {
+          _errorMessage =
+          'Erreur lors de la création du compte: ${response.statusMessage}';
+        });
+      }
+    } catch (error) {
+      setState(() {
+        _errorMessage = 'Erreur lors de la création du compte: $error';
       });
-      dio.options.headers['Authorization'] =
-      'Bearer ${userProvider.user?.token}';
-      final response = await dio.post(url, data: {
-        'email': emailController.text,
-        'password': passwordController.text,
-        'pseudo': pseudoController.text,
-        'ville': cityController.text,
-        'codePostal': int.parse(postalCodeController.text),
-
-
+    } finally {
+      setState(() {
+        _isLoading = false;
       });
-    }
-    catch (error) {
-      print('Erreur lors de la création de l\'annonce: $error');
     }
   }
 
   @override
+  void dispose() {
+    // Libérer les contrôleurs
+    pseudoController.dispose();
+    emailController.dispose();
+    cityController.dispose();
+    postalCodeController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final userProvider = Provider.of<UserProvider>(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF8E9DE),
       body: SingleChildScrollView(
@@ -78,117 +126,16 @@ class _UserRegistrationPageState extends State<UserRegistrationPage> {
                 width: 250,
                 height: 250,
               ),
-              Container(
-                width: 500,
-                height: 65,
-                decoration: BoxDecoration(
-                  color: const Color(0xA08A9B6E),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 350,
-                      child: TextFormField(
-                        controller: pseudoController,
-                        decoration: InputDecoration(
-                          labelText: 'Pseudo',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               SizedBox(height: 14.0),
-              Container(
-                width: 500,
-                height: 65,
-                decoration: BoxDecoration(
-                  color: const Color(0xA08A9B6E),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 350,
-                      child: TextFormField(
-                        controller: emailController,
-                        decoration: InputDecoration(
-                          labelText: 'Mail',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildTextField(pseudoController, 'Pseudo'),
               SizedBox(height: 14.0),
-              Container(
-                width: 500,
-                height: 65,
-                decoration: BoxDecoration(
-                  color: const Color(0xA08A9B6E),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 350,
-                      child: TextFormField(
-                        controller: cityController,
-                        decoration: InputDecoration(
-                          labelText: 'City',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildTextField(emailController, 'Mail', keyboardType: TextInputType.emailAddress),
               SizedBox(height: 14.0),
-              Container(
-                width: 500,
-                height: 65,
-                decoration: BoxDecoration(
-                  color: const Color(0xA08A9B6E),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 350,
-                      child: TextFormField(
-                        controller: postalCodeController,
-                        decoration: InputDecoration(
-                          labelText: 'Postal Code',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildTextField(cityController, 'City'),
               SizedBox(height: 14.0),
-              Container(
-                width: 500,
-                height: 65,
-                decoration: BoxDecoration(
-                  color: const Color(0xA08A9B6E),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 350,
-                      child: TextFormField(
-                        controller: passwordController,
-                        obscureText: true, // Masque le texte saisi
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildTextField(postalCodeController, 'Postal Code', keyboardType: TextInputType.number),
               SizedBox(height: 14.0),
+              _buildTextField(passwordController, 'Password', obscureText: true),
               SizedBox(height: 14.0),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -198,36 +145,69 @@ class _UserRegistrationPageState extends State<UserRegistrationPage> {
                     onChanged: (value) {
                       setState(() {
                         _acceptedPolicy = value ?? false;
-                        _checkFields(); // Appel à la fonction pour vérifier les champs
+                        _checkFields();
                       });
                     },
                   ),
-                ],
-              ),
-              SizedBox(height: 20.0),
-              // Affichage du bouton "S'inscrire" uniquement si les conditions sont remplies
-              if (_isButtonEnabled)
-                GestureDetector(
-                  onTap: () {
-                    createAccount(userProvider);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => LoginPage()),
-
-                    );
-                  },
-                  child: Text(
-                    "S'inscrire",
-                    style: TextStyle(
-                      color: Color(0xFF354733),
-                      decoration: TextDecoration.underline,
-                      fontSize: 30,
-
+                  Expanded(
+                    child: Text(
+                      "Vous acceptez les conditions d'utilisation de l'application",
+                      style: TextStyle(fontSize: 14.0),
                     ),
                   ),
+                ],
+              ),
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10.0),
+                  child: Text(
+                    _errorMessage!,
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ),
+              SizedBox(height: 20.0),
+              _isLoading
+                  ? CircularProgressIndicator()
+                  : ElevatedButton(
+                onPressed: _isButtonEnabled ? createAccount : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF354733),
+                  padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                child: Text(
+                  "S'inscrire",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label,
+      {bool obscureText = false, TextInputType keyboardType = TextInputType.text}) {
+    return Container(
+      width: 500,
+      decoration: BoxDecoration(
+        color: const Color(0xA08A9B6E),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          border: InputBorder.none,
         ),
       ),
     );
@@ -236,13 +216,12 @@ class _UserRegistrationPageState extends State<UserRegistrationPage> {
 
 void main() {
   runApp(
-      ChangeNotifierProvider(
-        create: (_) => UserProvider(),
-        child:
-        (MaterialApp(
-
-          home: UserRegistrationPage(),
-        )
-        ),
-      ));
+    ChangeNotifierProvider(
+      create: (_) => UserProvider(),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: UserRegistrationPage(),
+      ),
+    ),
+  );
 }

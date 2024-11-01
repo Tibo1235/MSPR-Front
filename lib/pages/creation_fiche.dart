@@ -7,7 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import '/models/fiche.dart'; // Importation du modèle Fiche
 import '/models/user.dart'; // Importation du modèle User
-import '../utility/providerUser.dart'; // Importation du providerUser
+import '../utility/providerUser.dart'; // Importation du package image
 
 class CreateFichePage extends StatefulWidget {
   @override
@@ -19,72 +19,29 @@ class _CreateFichePageState extends State<CreateFichePage> {
   List<File> images = [];
   TextEditingController especesController = TextEditingController();
   TextEditingController contenuController = TextEditingController();
-  bool _isLoading = false;
-  String? _errorMessage;
 
-  // Configuration de Dio avec une URL de base
-  late Dio dio;
 
-  @override
-  void initState() {
-    super.initState();
-    dio = Dio(
-      BaseOptions(
-        baseUrl: 'http://10.2.0.0:3000', // Remplacez par l'URL de votre backend
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    especesController.dispose();
-    contenuController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickImages(ImageSource source) async {
-    try {
-      final pickedFiles = await ImagePicker().pickMultiImage();
-      if (pickedFiles != null && pickedFiles.isNotEmpty) {
-        setState(() {
-          images.addAll(pickedFiles.map((pickedFile) => File(pickedFile.path)));
-        });
-      }
-    } catch (e) {
-      print('Erreur lors de la sélection des images: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de la sélection des images')),
-      );
+  Future<void> _pickPhoto(ImageSource source) async {
+    final pickedFile = await ImagePicker().pickImage(source: source);
+    if (pickedFile != null) {
+      setState(() {
+        photo = File(pickedFile.path);
+      });
     }
   }
 
   Future<void> createFiche(User? user) async {
-    if (images.isEmpty) {
-      setState(() {
-        _errorMessage = 'Veuillez sélectionner au moins une image.';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
     try {
-      // Préparer les fichiers d'images
-      List<MultipartFile> multipartImages = [];
-      for (var image in images) {
-        multipartImages.add(await MultipartFile.fromFile(image.path, filename: image.path.split('/').last));
-      }
+      Dio dio = Dio();
+
+
+      // URL de l'API pour créer une fiche
+      const String url = '/fiches';
 
       FormData formData = FormData.fromMap({
         'especes': especesController.text,
         'contenu': contenuController.text,
-        'photos': multipartImages, // Liste de MultipartFile
+        'photos': await MultipartFile.fromFile(photo!.path, filename: 'photo.jpg'),
       });
 
       // Ajouter le header d'autorisation
@@ -110,7 +67,14 @@ class _CreateFichePageState extends State<CreateFichePage> {
         _errorMessage = 'Erreur lors de la création de la fiche: $error';
       });
       print('Erreur lors de la création de la fiche: $error');
-    } finally {
+      // Gérer l'erreur comme nécessaire
+    }
+  }
+
+  Future<void> getImage(ImageSource source) async {
+
+    final imageTemporary = await ImagePicker().pickImage(source: source);
+    if (imageTemporary != null) {
       setState(() {
         _isLoading = false;
       });
@@ -173,28 +137,36 @@ class _CreateFichePageState extends State<CreateFichePage> {
   }
 
   Future<void> submitForm(User? user) async {
-    if (especesController.text.isEmpty || contenuController.text.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text("Champs incomplets"),
-            content: Text("Veuillez remplir tous les champs avant de soumettre."),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFFBD6578), // Couleur de fond
+
+    try {
+      if (especesController.text.isNotEmpty &&
+
+          contenuController.text.isNotEmpty) {
+        createFiche(user);
+      } else {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text("Champs incomplets"),
+              content: Text("Veuillez remplir tous les champs avant de soumettre."),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFBD6578), // Couleur de fond
+                  ),
+                  child: Text('OK'),
                 ),
-                child: Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
-      return;
+              ],
+            );
+          },
+        );
+      }
+    } catch (error) {
+      print('Erreur lors de la création de la fiche: $error');
     }
 
     await createFiche(user);

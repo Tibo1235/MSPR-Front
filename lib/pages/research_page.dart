@@ -1,5 +1,3 @@
-//Pour tous les utilisateurs
-//Permet de faire une recherche dans les annonces
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:dio/dio.dart';
@@ -8,7 +6,6 @@ import '/models/annonce.dart';
 import 'package:provider/provider.dart';
 import '/pages/detail_annonce.dart';
 import '/utility/providerUser.dart';
-
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);
@@ -21,51 +18,37 @@ class _SearchState extends State<SearchPage> {
   List<Annonce> searchResults = [];
   String searchTerm = "";
 
+
   Future<List<Annonce>> fetchAnnoncesFromApi(user) async {
-    Dio dio = Dio();
-    Response response;
-
-    try {
-      if (searchTerm == "") {
-        response = await dio.get(
-          '/annonces/search',
-          queryParameters: {'termeRecherche': '""'},
-          options: Options(
-            headers: {
-              'Authorization': 'Bearer ${user?.token}',
-            },
-          ),
-        );
-      } else {
-        response = await dio.get(
-          '/annonces/search',
-          queryParameters: {'termeRecherche': searchTerm},
-          options: Options(
-            headers: {
-              'Authorization': 'Bearer ${user?.token}',
-            },
-          ),
-        );
-      }
-
-      if (response.statusCode == 200) {
-        print(response.data);
-        final Map<String, dynamic> decodedJson = Japx.decode(json.decode(response.data));
-        final List<dynamic> data = decodedJson['data'];
-        List to_sort = data.map((json) => Annonce.fromJson(json)).toList();
-        List<Annonce> return_list = [];
-        for (var annonce in to_sort) {
-          if (annonce.is_conseil == "true") {
-            return_list.add(annonce);
-          }
+    var response;
+    if (searchTerm == "")
+    {
+      response = await http.get(Uri.parse('/annonces/search?termeRecherche=""'),
+          headers: {
+          'Authorization': 'Bearer ${user?.token}'
+          });
+    }
+    else {
+      response = await http.get(Uri.parse(
+          '/annonces/search?termeRecherche=${searchTerm}'),
+          headers: {
+            'Authorization': 'Bearer ${user?.token}'
+          });
+    }
+    if (response.statusCode == 200) {
+      print(json.decode(response.body));
+      final Map<String, dynamic> decodedJson = Japx.decode(json.decode(response.body));
+      final List<dynamic> data = decodedJson['data'];
+      List to_sort = data.map((json) => Annonce.fromJson(json)).toList();
+      List<Annonce>return_list = [];
+      for (var annonce in to_sort) {
+        if (annonce.is_conseil == "true") {
+          return_list.add(annonce);
         }
-        return return_list;
-      } else {
-        throw Exception('Failed to load annonces');
       }
-    } catch (e) {
-      print('Error: $e');
-      throw Exception('Failed to load annonces');
+      return return_list;
+    } else {
+      throw Exception('Failed to load annonce');
     }
   }
 
@@ -132,7 +115,7 @@ class _SearchState extends State<SearchPage> {
                               itemBuilder: (context, index) {
                                 return InkWell(
                                   onTap: () {
-                                    //Naviguer vers la page de détails de l'annonce
+                                    //Naviguer vers la page de détails de l'article
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(

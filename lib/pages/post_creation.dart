@@ -1,10 +1,9 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import '/utility/providerUser.dart';// Assurez-vous d'importer le bon fichier de provider
+import '/utility/providerUser.dart';
 import 'package:http_parser/http_parser.dart';
 
 class ImagePickerApp extends StatefulWidget {
@@ -34,9 +33,8 @@ class _ImagePickerAppState extends State<ImagePickerApp> {
     try {
       Dio dio = Dio();
 
-
       // URL de l'API pour créer une annonce
-      const String url = '/annonces';
+      const String url = 'http://localhost:3000/annonces'; // Update to your actual API endpoint
 
       List<MultipartFile> multipartFiles = [];
 
@@ -45,28 +43,28 @@ class _ImagePickerAppState extends State<ImagePickerApp> {
         'date_fin': endDate?.toLocal().toString().split(' ')[0],
         'description': descriptionController.text,
         'titre': titreController.text,
-      /*"photos": [
-      await MultipartFile.fromFile(images[0].path, filename: 'images[0]'),
-      await MultipartFile.fromFile(images[1].path, filename: 'images[1]'),
-      ],*/
+        'usersId': userProvider.user?.userId, // Add user ID to the FormData
         'espece[0]': especeControllers[0].text,
         'espece[1]': especeControllers[1].text,
         'pseudo[0]': pseudoControllers[0].text,
         'pseudo[1]': pseudoControllers[1].text,
       }, ListFormat.multiCompatible);
-        for (var file in images) {
-          formData.files.addAll([
-            MapEntry("photos[0]", await MultipartFile.fromFile(file!.path, filename: file.path.split('/').last, contentType: MediaType("image","jpeg"))),
-          ]);
-          formData.files.addAll([
-            MapEntry("photos[1]", await MultipartFile.fromFile(file!.path, filename: file.path.split('/').last, contentType: MediaType("image","jpeg"))),
-          ]);
-        }
-      /*for (var image in images) {
-        formData.files.add((await MultipartFile.fromFile(image.path, filename: image.path.split('/').last)) as MapEntry<String, MultipartFile>);
-      }*/
+
+      for (var file in images) {
+        formData.files.add(
+          MapEntry(
+            "photos[]",
+            await MultipartFile.fromFile(
+              file.path,
+              filename: file.path.split('/').last,
+              contentType: MediaType("image", "jpeg"),
+            ),
+          ),
+        );
+      }
 
       dio.options.headers['Authorization'] = 'Bearer ${userProvider.user?.token}';
+
       print("${userProvider.user?.token}");
 
       print('Envoi de la requête avec les données :');
@@ -289,7 +287,6 @@ class _ImagePickerAppState extends State<ImagePickerApp> {
     );
   }
 }
-
 
 void main() {
   runApp(

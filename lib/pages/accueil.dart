@@ -4,11 +4,8 @@ import 'package:provider/provider.dart';
 import '/pages/research_page.dart';
 import '/pages/account_page.dart';
 import '/pages/post_creation.dart';
-import 'account_creation.dart';
 import 'adminChoice.dart';
 import 'botanistChoice.dart';
-import 'detail_annonce.dart';
-import 'login_page.dart';
 
 class HomePage extends StatefulWidget {
   @override

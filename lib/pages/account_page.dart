@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:japx/japx.dart';
+import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
 import '/models/user.dart';
@@ -25,35 +25,25 @@ class _AccountPageState extends State<AccountPage> {
   TextEditingController villeController = TextEditingController();
   TextEditingController codePostalController = TextEditingController();
 
+  final Dio dio = Dio();
+
   Future<UserInfo> userInfos(user) async {
-    Dio dio = Dio();
-
-    try {
-      final response = await dio.get(
-        '/users/infos',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer ${user?.token}',
-          },
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> decodedJson = json.decode(response.data);
-        final data = decodedJson['data']['attributes'];
-        return UserInfo.fromJson(data);
-      } else {
-        throw Exception('Failed to load User infos');
-      }
-    } catch (e) {
-      print('Error: $e');
+    final response = await http.get(
+      Uri.parse('/users/infos'),
+      headers: {
+        'Authorization': 'Bearer ${user?.token}'
+      },
+    );
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> decodedJson = json.decode(response.body);
+      final data = decodedJson['data']['attributes'];
+      return UserInfo.fromJson(data);
+    } else {
       throw Exception('Failed to load User infos');
     }
   }
 
   void saveChanges(UserInfo userInfo) {
-    // Implement your update logic here. For example:
-    // Call an API to update the user info in the backend
     setState(() {
       isEditingPseudo = false;
       isEditingEmail = false;
@@ -173,32 +163,37 @@ class _AccountPageState extends State<AccountPage> {
     required VoidCallback onEdit,
     required VoidCallback onSave,
   }) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-            decoration: BoxDecoration(
-              color: Color(0xA68A9B6E),
-              borderRadius: BorderRadius.circular(15.0),
-            ),
-            child: isEditing
-                ? TextField(
-              controller: controller,
-              style: TextStyle(color: Colors.black, fontSize: 16),
-              textAlign: TextAlign.center,
-            )
-                : Text(
-              value,
-              style: TextStyle(color: Colors.black, fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
+        Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+        SizedBox(height: 4),
+        if (isEditing)
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.check),
+                onPressed: onSave,
+              ),
+            ],
+          )
+        else
+          Row(
+            children: [
+              Expanded(
+                child: Text(value),
+              ),
+              IconButton(
+                icon: Icon(Icons.edit),
+                onPressed: onEdit,
+              ),
+            ],
           ),
-        ),
-        IconButton(
-          icon: Icon(isEditing ? Icons.check : Icons.edit),
-          onPressed: isEditing ? onSave : onEdit,
-        ),
       ],
     );
   }
