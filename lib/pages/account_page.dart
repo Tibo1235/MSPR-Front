@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
-import 'package:dio/dio.dart';
 import '/models/user.dart';
 import '/utility/providerUser.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -28,18 +27,24 @@ class _AccountPageState extends State<AccountPage> {
   final Dio dio = Dio();
 
   Future<UserInfo> userInfos(user) async {
-    final response = await http.get(
-      Uri.parse('/users/infos'),
-      headers: {
-        'Authorization': 'Bearer ${user?.token}'
-      },
-    );
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> decodedJson = json.decode(response.body);
-      final data = decodedJson['data']['attributes'];
-      return UserInfo.fromJson(data);
-    } else {
-      throw Exception('Failed to load User infos');
+    try {
+      // Configurer l'en-tête d'autorisation pour Dio
+      dio.options.headers['Authorization'] = 'Bearer ${user?.token}';
+
+      // Effectuer la requête GET avec Dio
+      final response = await dio.get('/users/infos');
+
+      // Vérifier si la requête a réussi
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> decodedJson = response.data;
+        final data = decodedJson['data']['attributes'];
+        return UserInfo.fromJson(data);
+      } else {
+        throw Exception('Failed to load User infos');
+      }
+    } catch (e) {
+      print('Erreur lors de la récupération des informations utilisateur: $e');
+      throw e;
     }
   }
 

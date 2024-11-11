@@ -20,43 +20,50 @@ class _CreateFichePageState extends State<CreateFichePage> {
   TextEditingController especesController = TextEditingController();
   TextEditingController contenuController = TextEditingController();
 
+  // Variables manquantes
+  File? photo; // Image actuellement sélectionnée
+  String? _errorMessage; // Message d'erreur à afficher
+  bool _isLoading = false; // État de chargement de la requête
 
-  Future<void> _pickPhoto(ImageSource source) async {
+  Future<void> _pickImages(ImageSource source) async {
     final pickedFile = await ImagePicker().pickImage(source: source);
     if (pickedFile != null) {
       setState(() {
-        photo = File(pickedFile.path);
+        images.add(File(pickedFile.path)); // Ajouter l'image sélectionnée à la liste
       });
     }
   }
 
   Future<void> createFiche(User? user) async {
     try {
+      setState(() {
+        _isLoading = true; // Indiquer que le chargement commence
+      });
+
       Dio dio = Dio();
-
-
-      // URL de l'API pour créer une fiche
       const String url = '/fiches';
+
+      List<MultipartFile> photos = await Future.wait(images.map((image) async {
+        return await MultipartFile.fromFile(image.path, filename: image.path.split('/').last);
+      }));
 
       FormData formData = FormData.fromMap({
         'especes': especesController.text,
         'contenu': contenuController.text,
-        'photos': await MultipartFile.fromFile(photo!.path, filename: 'photo.jpg'),
+        'photos': photos,
       });
 
       // Ajouter le header d'autorisation
       dio.options.headers['Authorization'] = 'Bearer ${user?.token}';
 
       // Envoyer la requête POST
-      final response = await dio.post('/fiches', data: formData);
+      final response = await dio.post(url, data: formData);
 
       if (response.statusCode == 201) {
-        // Fiche créée avec succès
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Fiche créée avec succès')),
         );
-        // Optionnel: Naviguer vers une autre page ou réinitialiser le formulaire
-        Navigator.pop(context); // Par exemple, revenir à la page précédente
+        Navigator.pop(context); // Revenir à la page précédente
       } else {
         setState(() {
           _errorMessage = 'Erreur lors de la création de la fiche: ${response.statusMessage}';
@@ -66,18 +73,37 @@ class _CreateFichePageState extends State<CreateFichePage> {
       setState(() {
         _errorMessage = 'Erreur lors de la création de la fiche: $error';
       });
-      print('Erreur lors de la création de la fiche: $error');
-      // Gérer l'erreur comme nécessaire
+    } finally {
+      setState(() {
+        _isLoading = false; // Indiquer que le chargement est terminé
+      });
     }
   }
 
-  Future<void> getImage(ImageSource source) async {
-
-    final imageTemporary = await ImagePicker().pickImage(source: source);
-    if (imageTemporary != null) {
-      setState(() {
-        _isLoading = false;
-      });
+  Future<void> submitForm(User? user) async {
+    if (especesController.text.isNotEmpty && contenuController.text.isNotEmpty && images.isNotEmpty) {
+      await createFiche(user);
+    } else {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("Champs incomplets"),
+            content: Text("Veuillez remplir tous les champs avant de soumettre."),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFBD6578), // Couleur de fond
+                ),
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
     }
   }
 
@@ -134,42 +160,6 @@ class _CreateFichePageState extends State<CreateFichePage> {
         );
       },
     );
-  }
-
-  Future<void> submitForm(User? user) async {
-
-    try {
-      if (especesController.text.isNotEmpty &&
-
-          contenuController.text.isNotEmpty) {
-        createFiche(user);
-      } else {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text("Champs incomplets"),
-              content: Text("Veuillez remplir tous les champs avant de soumettre."),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFBD6578), // Couleur de fond
-                  ),
-                  child: Text('OK'),
-                ),
-              ],
-            );
-          },
-        );
-      }
-    } catch (error) {
-      print('Erreur lors de la création de la fiche: $error');
-    }
-
-    await createFiche(user);
   }
 
   @override

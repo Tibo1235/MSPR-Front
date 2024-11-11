@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lodim_mspr/pages/contact_page_chat.dart';
+import 'package:lodim_mspr/pages/research_page.dart';
 import 'package:provider/provider.dart';
 import 'pages/account_creation.dart';
 import 'pages/account_page.dart';
@@ -19,7 +20,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
         create: (_) => UserProvider(),
         child: MaterialApp(
-          home: ContactPage(),
+          home: LoginPage(),
         ),
     );
   }

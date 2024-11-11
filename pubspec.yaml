@@ -75,6 +75,8 @@ flutter:
     - assets/images/logoentier.png
     - assets/images/logo_svg.svg
     - assets/images/logoavecfond.png
+    - assets/images/plante.png
+    - assets/images/hand-leaf.png
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

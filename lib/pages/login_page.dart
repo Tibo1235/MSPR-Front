@@ -1,4 +1,3 @@
-// pages/login_page.dart
 import 'package:flutter/material.dart';
 import '/models/user.dart';
 import '../utility/auth.dart';
@@ -82,45 +81,102 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  @override
   Widget _page(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Center(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _icon(),
-              const SizedBox(height: 50),
-              _inputField("Email", _emailController, keyboardType: TextInputType.emailAddress),
-              const SizedBox(height: 20),
-              _inputField("Mot de passe", _passwordController, isPassword: true),
-              const SizedBox(height: 50),
-              _isLoading
-                  ? CircularProgressIndicator()
-                  : _loginBtn(context),
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10.0),
-                  child: Text(
-                    _errorMessage!,
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
-              const SizedBox(height: 10),
-              Divider(
-                color: Color(0xFF354733),
-                thickness: 5,
-                indent: 40,
-                endIndent: 40,
+    return Stack(
+      children: [
+        // Ajout de l'image "hand-leaf.png" en bas au centre avec transparence
+        Positioned(
+          bottom: 0,
+          left: -100,
+          right: 0,
+          child: Center(
+            child: Opacity(
+              opacity: 0.9, // Ajustez la valeur de transparence
+              child: Image.asset(
+                'assets/images/hand-leaf.png',
+                width: 700, // Ajustez la taille de l'image
+                height: 400, // Ajustez la taille de l'image
               ),
-              const SizedBox(height: 5),
-              _signUpBtn(context),
-              _extraText(),
-            ],
+            ),
           ),
         ),
-      ),
+        // Ajout de l'image de la plante en haut à gauche
+        Positioned(
+          top: 20, // Ajustez selon vos besoins
+          left: -10, // Ajustez selon vos besoins
+          child: Image.asset(
+            'assets/images/plante.png', // Remplacez par le chemin de votre image
+            width: 100, // Ajustez la taille selon vos besoins
+            height: 100, // Ajustez la taille selon vos besoins
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Center(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _icon(),
+                  const SizedBox(height: 50),
+                  _inputField("Email", _emailController, keyboardType: TextInputType.emailAddress),
+                  const SizedBox(height: 20),
+                  _inputField("Mot de passe", _passwordController, isPassword: true),
+                  const SizedBox(height: 50),
+                  _isLoading
+                      ? CircularProgressIndicator()
+                      : _loginBtn(context),
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  const SizedBox(height: 10),
+                  _guestModeBtn(context), // Bouton invité ajouté ici
+                  Divider(
+                    color: Color(0xFF354733),
+                    thickness: 5,
+                    indent: 150,
+                    endIndent: 20,
+                  ),
+                  const SizedBox(height: 5),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.5, // Réduction à 50% de la largeur
+                      child: Column(
+                        children: [
+                          _signUpBtn(context), // Bouton d'inscription
+                          _extraText(), // Texte pour accéder au compte
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 20, // Positionnement en bas de l'écran
+          left: 0,   // Positionnement à gauche de l'écran
+          child: RotatedBox(
+            quarterTurns: 3, // Rotation à 270 degrés (90° * 3)
+            child: Text(
+              "Cultivez l'inspiration !",
+              style: TextStyle(
+                color: Color(0xFF354733),
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -157,23 +213,28 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _loginBtn(BuildContext context) {
     return isButtonVisible
-        ? ElevatedButton(
-      onPressed: () async {
-        await login(context);
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Color(0xFF354733),
-        padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-      ),
-      child: Text(
-        "Se connecter",
-        style: TextStyle(fontSize: 20, color: Colors.white),
+        ? Padding(
+      padding: const EdgeInsets.only(right: 20.0), // Ajuste cet espacement selon vos besoins
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TextButton(
+            onPressed: () async {
+              await login(context);
+            },
+            child: Text(
+              "Se connecter",
+              style: TextStyle(
+                color: Color(0xFF4A6741),
+                fontSize: 25,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     )
-        : SizedBox();
+        : SizedBox(); // Renvoie un SizedBox vide si le bouton n'est pas visible
   }
 
   Widget _signUpBtn(BuildContext context) {
@@ -186,7 +247,32 @@ class _LoginPageState extends State<LoginPage> {
       },
       child: Text(
         "S'inscrire",
-        style: TextStyle(fontSize: 20, color: Color(0xFF354733)),
+        style: TextStyle(
+          color: Color(0xFF4A6741),
+          fontSize: 25, // Réduction de la taille de la police
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _guestModeBtn(BuildContext context) {
+    return TextButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomePage(), // Remplacez par une page dédiée au mode invité si nécessaire
+          ),
+        );
+      },
+      child: Text(
+        "",
+        style: TextStyle(
+          color: Color(0xFF4A6741),
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -195,7 +281,7 @@ class _LoginPageState extends State<LoginPage> {
     return const Text(
       "Vous n'arrivez pas à accéder à votre compte?",
       textAlign: TextAlign.center,
-      style: TextStyle(fontSize: 16, color: Color(0xFF354733)),
+      style: TextStyle(fontSize: 14, color: Color(0xFF354733)), // Réduction de la taille de la police
     );
   }
 }
