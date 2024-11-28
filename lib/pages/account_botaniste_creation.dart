@@ -34,7 +34,7 @@ class _UserBotanistRegistrationPageState extends State<UserBotanistRegistrationP
     try {
       Dio dio = Dio();
 
-      const String url = 'http://10.0.2.2:3000/users/botanists';
+      const String url = 'http://10.0.2.2:3000/user/botanist';
 
       FormData formData = FormData.fromMap({
         'email': emailController.text,

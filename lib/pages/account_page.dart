@@ -26,24 +26,68 @@ class _AccountPageState extends State<AccountPage> {
 
   final Dio dio = Dio();
 
-  Future<UserInfo> userInfos(user) async {
+  Future<UserInfo> userInfos(User? user) async {
+    if (user == null || user.userId == null) {
+      throw Exception("L'utilisateur ou son userId est null");
+    }
+
     try {
-      // Configurer l'en-tête d'autorisation pour Dio
-      dio.options.headers['Authorization'] = 'Bearer ${user?.token}';
+      dio.options.headers['Authorization'] = 'Bearer ${user.token}';
+      final String url = 'http://10.0.2.2:3000/user/${user.userId}';
 
-      // Effectuer la requête GET avec Dio
-      final response = await dio.get('/users/infos');
-
-      // Vérifier si la requête a réussi
+      final response = await dio.get(url);
       if (response.statusCode == 200) {
-        final Map<String, dynamic> decodedJson = response.data;
-        final data = decodedJson['data']['attributes'];
-        return UserInfo.fromJson(data);
+        final data = response.data;
+        if (data != null) {
+          return UserInfo.fromJson(data);
+        } else {
+          throw Exception('Les informations de l\'utilisateur sont manquantes dans la réponse');
+        }
       } else {
-        throw Exception('Failed to load User infos');
+        throw Exception('Échec de la récupération des informations utilisateur');
       }
     } catch (e) {
       print('Erreur lors de la récupération des informations utilisateur: $e');
+      throw e;
+    }
+  }
+
+  Future<void> updateUser(UserInfo updatedUser, User? user) async {
+    if (user == null || user.userId == null) {
+      throw Exception("L'utilisateur ou son userId est null");
+    }
+
+    try {
+      dio.options.headers['Authorization'] = 'Bearer ${user.token}';
+      final String url = 'http://10.0.2.2:3000/user/${user.userId}';
+
+      final Map<String, dynamic> data = {
+        "email": updatedUser.email,
+        "pseudo": updatedUser.pseudo,
+        "ville": updatedUser.ville,
+        "codePostal": updatedUser.codePostal,
+        "roleId": user.role, // Ajoutez le roleId de l'utilisateur
+      };
+
+      final response = await dio.put(
+        url,
+        data: jsonEncode(data),
+        options: Options(contentType: Headers.jsonContentType),
+      );
+
+      if (response.statusCode == 200) {
+        print("Utilisateur mis à jour avec succès !");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Utilisateur mis à jour avec succès !")),
+        );
+      } else {
+        throw Exception('Erreur lors de la mise à jour : ${response.data}');
+      }
+    } catch (e) {
+      print("Erreur lors de la mise à jour de l'utilisateur: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Erreur lors de la mise à jour.")),
+      );
       throw e;
     }
   }
@@ -55,6 +99,17 @@ class _AccountPageState extends State<AccountPage> {
       isEditingVille = false;
       isEditingCodePostal = false;
     });
+
+    final updatedUser = UserInfo(
+      id: userInfo.id,
+      pseudo: pseudoController.text,
+      email: emailController.text,
+      ville: villeController.text,
+      codePostal: codePostalController.text,
+      roleId: userInfo.roleId, // Assurez-vous de conserver le roleId
+    );
+
+    updateUser(updatedUser, Provider.of<UserProvider>(context, listen: false).user);
   }
 
   @override
@@ -83,14 +138,14 @@ class _AccountPageState extends State<AccountPage> {
           codePostalController.text = userInfo?.codePostal ?? "";
 
           return Container(
-            padding: EdgeInsets.all(20),
-            color: Color(0xFFF8E9DE),
+            padding: const EdgeInsets.all(20),
+            color: const Color(0xFFF8E9DE),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 svgIcon,
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 buildEditableField(
                   label: "Pseudo",
                   value: userInfo?.pseudo ?? "pseudo inconnu",
@@ -105,7 +160,7 @@ class _AccountPageState extends State<AccountPage> {
                     saveChanges(userInfo!);
                   },
                 ),
-                SizedBox(height: 8.0),
+                const SizedBox(height: 8.0),
                 buildEditableField(
                   label: "Email",
                   value: userInfo?.email ?? "email inconnu",
@@ -120,7 +175,7 @@ class _AccountPageState extends State<AccountPage> {
                     saveChanges(userInfo!);
                   },
                 ),
-                SizedBox(height: 8.0),
+                const SizedBox(height: 8.0),
                 buildEditableField(
                   label: "Ville",
                   value: userInfo?.ville ?? "Ville inconnue",
@@ -135,7 +190,7 @@ class _AccountPageState extends State<AccountPage> {
                     saveChanges(userInfo!);
                   },
                 ),
-                SizedBox(height: 8.0),
+                const SizedBox(height: 8.0),
                 buildEditableField(
                   label: "Code Postal",
                   value: userInfo?.codePostal ?? "Code Postal inconnu",
@@ -171,8 +226,8 @@ class _AccountPageState extends State<AccountPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
-        SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
         if (isEditing)
           Row(
             children: [
@@ -182,7 +237,7 @@ class _AccountPageState extends State<AccountPage> {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.check),
+                icon: const Icon(Icons.check),
                 onPressed: onSave,
               ),
             ],
@@ -194,7 +249,7 @@ class _AccountPageState extends State<AccountPage> {
                 child: Text(value),
               ),
               IconButton(
-                icon: Icon(Icons.edit),
+                icon: const Icon(Icons.edit),
                 onPressed: onEdit,
               ),
             ],

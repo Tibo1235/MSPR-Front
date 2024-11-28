@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
@@ -29,26 +31,36 @@ class _ImagePickerAppState extends State<ImagePickerApp> {
     });
   }
 
+  Future<String> imageToBase64(File imageFile) async {
+    Uint8List bytes = await imageFile.readAsBytes();
+    List<int> intList = bytes.cast<int>(); // Convert Uint8List to List<int>
+    String base64Image = base64Encode(intList);
+    return base64Image;
+  }
+
   Future<void> createAnnonce(UserProvider userProvider) async {
     try {
       Dio dio = Dio();
+      const String url = 'http://10.0.2.2:3000/annonce/';
 
-      // URL de l'API pour créer une annonce
-      const String url = 'http://localhost:3000/annonces'; // Update to your actual API endpoint
+      List<String> base64Images = [];
+      for (var file in images) {
+        String base64Image = await imageToBase64(file);
+        base64Images.add(base64Image);
+      }
 
       List<MultipartFile> multipartFiles = [];
-
       FormData formData = FormData.fromMap({
-        'date_debut': startDate?.toLocal().toString().split(' ')[0],
-        'date_fin': endDate?.toLocal().toString().split(' ')[0],
+        'date_debut': startDate?.toIso8601String(),
+        'date_fin': endDate?.toIso8601String(),
         'description': descriptionController.text,
         'titre': titreController.text,
-        'usersId': userProvider.user?.userId, // Add user ID to the FormData
-        'espece[0]': especeControllers[0].text,
-        'espece[1]': especeControllers[1].text,
-        'pseudo[0]': pseudoControllers[0].text,
-        'pseudo[1]': pseudoControllers[1].text,
-      }, ListFormat.multiCompatible);
+        'isConseil': false, // Add a default value or retrieve it from the UI
+        'gardeId': userProvider.user?.userId, // Ensure this matches the expected field name
+        'espece': especeControllers.map((controller) => controller.text).toList(),
+        'pseudo': pseudoControllers.map((controller) => controller.text).toList(),
+        'photos': base64Images,
+      });
 
       for (var file in images) {
         formData.files.add(
@@ -65,21 +77,8 @@ class _ImagePickerAppState extends State<ImagePickerApp> {
 
       dio.options.headers['Authorization'] = 'Bearer ${userProvider.user?.token}';
 
-      print("${userProvider.user?.token}");
-
-      print('Envoi de la requête avec les données :');
-      print('Date Début : ${startDate?.toLocal().toString().split(' ')[0]}');
-      print('Date Fin : ${endDate?.toLocal().toString().split(' ')[0]}');
-      print('Description : ${descriptionController.text}');
-      print('Titre : ${titreController.text}');
-      print('Photos : ${images.map((image) => image.path).toList()}');
-      print('Espèces : ${especeControllers.map((controller) => controller.text).toList()}');
-      print('Pseudos : ${pseudoControllers.map((controller) => controller.text).toList()}');
-
-      // Envoi de la requête HTTP POST avec le corps JSON de l'annonce
       final response = await dio.post(url, data: formData);
 
-      // Vérifier le statut de la réponse
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Annonce créée avec succès!')),
@@ -94,12 +93,12 @@ class _ImagePickerAppState extends State<ImagePickerApp> {
           pseudoControllers.forEach((controller) => controller.clear());
         });
       } else {
-        throw Exception('Failed to create annonce');
+        throw Exception('Erreur lors de la création de l\'annonce: ${response.data}');
       }
     } catch (error) {
       print('Erreur lors de la création de l\'annonce: $error');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de la création de l\'annonce')),
+        SnackBar(content: Text('Erreur lors de la création de l\'annonce: $error')),
       );
     }
   }
@@ -124,13 +123,12 @@ class _ImagePickerAppState extends State<ImagePickerApp> {
 
   @override
   Widget build(BuildContext context) {
-    // Utilisation de Provider.of pour obtenir l'instance de UserProvider
     final userProvider = Provider.of<UserProvider>(context);
 
     return Scaffold(
       backgroundColor: Color(0xFFF8E9DE),
-      body: Center(
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        child: Center(
           child: Container(
             width: MediaQuery.of(context).size.width * 0.9,
             margin: EdgeInsets.all(16.0),
@@ -164,7 +162,7 @@ class _ImagePickerAppState extends State<ImagePickerApp> {
                     ),
                   ],
                 ),
-                SizedBox(height: 8.0), // Espace entre les boutons et le texte
+                SizedBox(height: 8.0),
                 if (startDate != null || endDate != null) ...[
                   Text(
                     "Date de début : ${startDate != null ? startDate!.toLocal().toString().split(' ')[0] : 'Non sélectionnée'}",
@@ -222,62 +220,104 @@ class _ImagePickerAppState extends State<ImagePickerApp> {
                     ),
                   ],
                 ),
+                SizedBox(height: 16.0),
                 if (images.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: SizedBox(
-                      height: 100,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: images.length,
-                        itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Image.file(images[index], height: 100, width: 100),
-                          );
-                        },
-                      ),
+                  SizedBox(
+                    height: 150,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: images.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            children: [
+                              Image.file(
+                                images[index],
+                                height: 100,
+                                width: 100,
+                                fit: BoxFit.cover,
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    images.removeAt(index);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 SizedBox(height: 16.0),
-                ...List.generate(especeControllers.length, (index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: TextField(
-                      controller: especeControllers[index],
-                      decoration: InputDecoration(
-                        labelText: "Espèce ${index + 1}",
-                        filled: true,
-                        fillColor: Color(0xA68A9B6E),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15.0),
-                          borderSide: BorderSide.none,
+                SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: Column(
+                    children: List.generate(especeControllers.length, (index) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: TextField(
+                          controller: especeControllers[index],
+                          decoration: InputDecoration(
+                            labelText: "Espèce ${index + 1}",
+                            filled: true,
+                            fillColor: Color(0xA68A9B6E),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15.0),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  );
-                }),
-                ...List.generate(pseudoControllers.length, (index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: TextField(
-                      controller: pseudoControllers[index],
-                      decoration: InputDecoration(
-                        labelText: "Pseudo ${index + 1}",
-                        filled: true,
-                        fillColor: Color(0xA68A9B6E),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15.0),
-                          borderSide: BorderSide.none,
+                      );
+                    }),
+                  ),
+                ),
+                SizedBox(height: 16.0),
+                SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: Column(
+                    children: List.generate(pseudoControllers.length, (index) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: TextField(
+                          controller: pseudoControllers[index],
+                          decoration: InputDecoration(
+                            labelText: "Pseudo ${index + 1}",
+                            filled: true,
+                            fillColor: Color(0xA68A9B6E),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15.0),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  );
-                }),
+                      );
+                    }),
+                  ),
+                ),
                 SizedBox(height: 16.0),
                 ElevatedButton(
-                  onPressed: () => createAnnonce(userProvider),
-                  child: Text('Créer Annonce'),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Color(0xA68A9B6E),
+                  ),
+                  onPressed: () {
+                    if (images.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Veuillez ajouter des images')),
+                      );
+                    } else {
+                      createAnnonce(userProvider);
+                    }
+                  },
+                  child: Text("Créer l'annonce"),
                 ),
               ],
             ),
@@ -286,15 +326,4 @@ class _ImagePickerAppState extends State<ImagePickerApp> {
       ),
     );
   }
-}
-
-void main() {
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => UserProvider(),
-      child: MaterialApp(
-        home: ImagePickerApp(),
-      ),
-    ),
-  );
 }

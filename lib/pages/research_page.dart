@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:japx/japx.dart';
-import '/models/annonce.dart';
 import 'package:provider/provider.dart';
+import '../models/user.dart';
+import '/models/annonce.dart';
 import '/pages/detail_annonce.dart';
 import '/utility/providerUser.dart';
 
@@ -18,13 +18,13 @@ class _SearchState extends State<SearchPage> {
   List<Annonce> searchResults = [];
   String searchTerm = "";
 
-  Future<List<Annonce>> fetchAnnoncesFromApi(user) async {
+  Future<List<Annonce>> fetchAnnoncesFromApi(User? user) async {
     try {
       final dio = Dio();
       Response response;
 
       response = await dio.get(
-        '/annonces/search',
+        'http://10.0.2.2:3000/annonces/search',
         queryParameters: {'termeRecherche': searchTerm},
         options: Options(headers: {
           'Authorization': 'Bearer ${user?.token}',
@@ -32,12 +32,12 @@ class _SearchState extends State<SearchPage> {
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> decodedJson = Japx.decode(response.data);
+        final Map<String, dynamic> decodedJson = jsonDecode(response.data);
         final List<dynamic> data = decodedJson['data'];
 
         List<Annonce> returnList = data
             .map((json) => Annonce.fromJson(json))
-            .where((annonce) => annonce.is_conseil == "true")
+            .where((annonce) => annonce.is_conseil == true)
             .toList();
 
         return returnList;
@@ -117,8 +117,7 @@ class _SearchState extends State<SearchPage> {
                                           ),
                                           contentPadding:
                                           const EdgeInsets.symmetric(
-                                              vertical: 10,
-                                              horizontal: 20),
+                                              vertical: 10, horizontal: 20),
                                         ),
                                       ),
                                     ),
@@ -145,14 +144,12 @@ class _SearchState extends State<SearchPage> {
                                   const Text(
                                     'Résultats de la recherche :',
                                     style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold),
+                                        fontSize: 18, fontWeight: FontWeight.bold),
                                   ),
                                   const SizedBox(height: 10),
                                   ListView.builder(
                                     shrinkWrap: true,
-                                    physics:
-                                    const NeverScrollableScrollPhysics(),
+                                    physics: const NeverScrollableScrollPhysics(),
                                     itemCount: searchResults.length,
                                     itemBuilder: (context, index) {
                                       return InkWell(

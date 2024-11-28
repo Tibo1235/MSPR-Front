@@ -10,11 +10,12 @@ class UserRegistrationPage extends StatefulWidget {
 }
 
 class _UserRegistrationPageState extends State<UserRegistrationPage> {
-  TextEditingController pseudoController = TextEditingController();
-  TextEditingController emailController = TextEditingController();
-  TextEditingController cityController = TextEditingController();
-  TextEditingController postalCodeController = TextEditingController();
-  TextEditingController passwordController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController pseudoController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController cityController = TextEditingController();
+  final TextEditingController postalCodeController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
   bool _acceptedPolicy = false;
   bool _isButtonEnabled = false;
   bool _isLoading = false;
@@ -48,16 +49,15 @@ class _UserRegistrationPageState extends State<UserRegistrationPage> {
     });
 
     try {
-      Dio dio = Dio();
+      final dio = Dio();
+      // Utilisez l'adresse IP appropriée pour l'émulateur Android
+      final String url = 'http://10.0.2.2:3000/user/register/user';
+      // Pour un appareil physique ou un émulateur iOS, utilisez l'adresse IP locale de votre machine
+      // final String url = 'http://YOUR_LOCAL_IP:3000/user/user';
 
-      // Remplacez par 10.0.2.2 pour un émulateur Android
-      const String url = 'http://10.0.2.2:3000/users/user';
-
-      // Conversion du code postal en entier
-      int codePostal = int.tryParse(postalCodeController.text) ?? 0;
-
-      // Préparation des données
-      Map<String, dynamic> data = {
+      // Convertir le code postal en chaîne de caractères
+      final String codePostal = postalCodeController.text;
+      final Map<String, dynamic> data = {
         'email': emailController.text,
         'password': passwordController.text,
         'pseudo': pseudoController.text,
@@ -65,7 +65,9 @@ class _UserRegistrationPageState extends State<UserRegistrationPage> {
         'codePostal': codePostal,
       };
 
-      // Envoi de la requête POST
+      print('URL: $url');
+      print('Data: $data');
+
       final response = await dio.post(
         url,
         data: data,
@@ -73,23 +75,28 @@ class _UserRegistrationPageState extends State<UserRegistrationPage> {
           headers: {
             'Content-Type': 'application/json',
           },
+          validateStatus: (status) {
+            return status! < 500; // Accepte les statuts 4xx pour le débogage
+          },
         ),
       );
 
+      print('Response Status Code: ${response.statusCode}');
+      print('Response Data: ${response.data}');
+
       if (response.statusCode == 201 || response.statusCode == 200) {
-        // Compte créé avec succès, naviguer vers la page de connexion
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => LoginPage()),
         );
       } else {
-        // Gérer les autres statuts de réponse
         setState(() {
           _errorMessage =
           'Erreur lors de la création du compte: ${response.statusMessage}';
         });
       }
     } catch (error) {
+      print('Error: $error');
       setState(() {
         _errorMessage = 'Erreur lors de la création du compte: $error';
       });
@@ -100,9 +107,9 @@ class _UserRegistrationPageState extends State<UserRegistrationPage> {
     }
   }
 
+
   @override
   void dispose() {
-    // Libérer les contrôleurs
     pseudoController.dispose();
     emailController.dispose();
     cityController.dispose();

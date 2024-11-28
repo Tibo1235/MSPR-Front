@@ -40,7 +40,7 @@ class _UserRegistrationAdminPageState extends State<UserRegistrationAdminPage> {
     try {
       Dio dio = Dio();
 
-      const String baseUrl = 'http://10.2.0.0:3000'; // Remplacez par l'URL de votre backend
+      const String baseUrl = 'http://10.2.0.0:3000/administrator'; // Remplacez par l'URL de votre backend
       String url = '$baseUrl/users';
 
       // Préparez les données à envoyer

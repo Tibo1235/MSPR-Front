@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '/models/user.dart';
-import '../utility/auth.dart';
+import '/utility/auth.dart';
 import 'package:provider/provider.dart';
-import '/utility/providerUser.dart';
+import '/utility/providerUser.dart'; // Le provider pour gérer l'utilisateur
 import '/pages/accueil.dart';
 import 'account_creation.dart';
 
@@ -47,19 +47,23 @@ class _LoginPageState extends State<LoginPage> {
       _errorMessage = null;
     });
 
+    // Appel à la méthode d'authentification
     final user = await Auth.authenticate(email, password);
 
     if (user != null) {
+      // Si l'authentification réussie, on met à jour le provider et navigue vers la page d'accueil
       Provider.of<UserProvider>(context, listen: false).setUser(user);
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePage()));
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+      );
     } else {
+      // Affichage de l'erreur si l'authentification échoue
       setState(() {
         _errorMessage = 'Identifiants incorrects. Veuillez réessayer.';
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-          'Identifiants incorrects. Veuillez réessayer.',
-        ),
+        content: Text('Identifiants incorrects. Veuillez réessayer.'),
       ));
     }
 
@@ -85,30 +89,30 @@ class _LoginPageState extends State<LoginPage> {
   Widget _page(BuildContext context) {
     return Stack(
       children: [
-        // Ajout de l'image "hand-leaf.png" en bas au centre avec transparence
+        // Image en bas
         Positioned(
           bottom: 0,
           left: -100,
           right: 0,
           child: Center(
             child: Opacity(
-              opacity: 0.9, // Ajustez la valeur de transparence
+              opacity: 0.9,
               child: Image.asset(
                 'assets/images/hand-leaf.png',
-                width: 700, // Ajustez la taille de l'image
-                height: 400, // Ajustez la taille de l'image
+                width: 700,
+                height: 400,
               ),
             ),
           ),
         ),
-        // Ajout de l'image de la plante en haut à gauche
+        // Image en haut à gauche
         Positioned(
-          top: 20, // Ajustez selon vos besoins
-          left: -10, // Ajustez selon vos besoins
+          top: 20,
+          left: -10,
           child: Image.asset(
-            'assets/images/plante.png', // Remplacez par le chemin de votre image
-            width: 100, // Ajustez la taille selon vos besoins
-            height: 100, // Ajustez la taille selon vos besoins
+            'assets/images/plante.png',
+            width: 100,
+            height: 100,
           ),
         ),
         Padding(
@@ -135,8 +139,6 @@ class _LoginPageState extends State<LoginPage> {
                         style: TextStyle(color: Colors.red),
                       ),
                     ),
-                  const SizedBox(height: 10),
-                  _guestModeBtn(context), // Bouton invité ajouté ici
                   Divider(
                     color: Color(0xFF354733),
                     thickness: 5,
@@ -147,11 +149,11 @@ class _LoginPageState extends State<LoginPage> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.5, // Réduction à 50% de la largeur
+                      width: MediaQuery.of(context).size.width * 0.5,
                       child: Column(
                         children: [
-                          _signUpBtn(context), // Bouton d'inscription
-                          _extraText(), // Texte pour accéder au compte
+                          _signUpBtn(context),
+                          _extraText(),
                         ],
                       ),
                     ),
@@ -162,10 +164,10 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
         Positioned(
-          bottom: 20, // Positionnement en bas de l'écran
-          left: 0,   // Positionnement à gauche de l'écran
+          bottom: 20,
+          left: 0,
           child: RotatedBox(
-            quarterTurns: 3, // Rotation à 270 degrés (90° * 3)
+            quarterTurns: 3,
             child: Text(
               "Cultivez l'inspiration !",
               style: TextStyle(
@@ -214,14 +216,12 @@ class _LoginPageState extends State<LoginPage> {
   Widget _loginBtn(BuildContext context) {
     return isButtonVisible
         ? Padding(
-      padding: const EdgeInsets.only(right: 20.0), // Ajuste cet espacement selon vos besoins
+      padding: const EdgeInsets.only(right: 20.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           TextButton(
-            onPressed: () async {
-              await login(context);
-            },
+            onPressed: _isLoading ? null : () async { await login(context); },
             child: Text(
               "Se connecter",
               style: TextStyle(
@@ -234,7 +234,7 @@ class _LoginPageState extends State<LoginPage> {
         ],
       ),
     )
-        : SizedBox(); // Renvoie un SizedBox vide si le bouton n'est pas visible
+        : SizedBox();
   }
 
   Widget _signUpBtn(BuildContext context) {
@@ -249,28 +249,7 @@ class _LoginPageState extends State<LoginPage> {
         "S'inscrire",
         style: TextStyle(
           color: Color(0xFF4A6741),
-          fontSize: 25, // Réduction de la taille de la police
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _guestModeBtn(BuildContext context) {
-    return TextButton(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomePage(), // Remplacez par une page dédiée au mode invité si nécessaire
-          ),
-        );
-      },
-      child: Text(
-        "",
-        style: TextStyle(
-          color: Color(0xFF4A6741),
-          fontSize: 20,
+          fontSize: 25,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -281,7 +260,7 @@ class _LoginPageState extends State<LoginPage> {
     return const Text(
       "Vous n'arrivez pas à accéder à votre compte?",
       textAlign: TextAlign.center,
-      style: TextStyle(fontSize: 14, color: Color(0xFF354733)), // Réduction de la taille de la police
+      style: TextStyle(fontSize: 14, color: Color(0xFF354733)),
     );
   }
 }
